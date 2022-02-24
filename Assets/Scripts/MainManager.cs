@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
 
 public class MainManager : MonoBehaviour
 {
@@ -11,6 +12,7 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text BestScoreText;
     public GameObject GameOverText;
     
     private bool m_Started = false;
@@ -22,6 +24,10 @@ public class MainManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if(LoadBestScore().score>-1)
+        {
+            BestScoreText.text = $"Best Score: {LoadBestScore().playerName} : {LoadBestScore().score}";
+        }
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
         
@@ -68,9 +74,54 @@ public class MainManager : MonoBehaviour
         ScoreText.text = $"Score : {m_Points}";
     }
 
+    [System.Serializable]
+    public class BestScoreData
+    {
+        public string playerName;
+        public int score;
+        
+        public BestScoreData(string pName, int pScore)
+        {
+            playerName = pName;
+            score = pScore;
+        }
+    }
+
+    public void SaveBestScore()
+    {
+        BestScoreData data = new BestScoreData(PlayerDataManager.Instance.playerName, m_Points);
+
+        string json = JsonUtility.ToJson(data);
+
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+
+    public BestScoreData LoadBestScore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if(File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            BestScoreData data = JsonUtility.FromJson<BestScoreData>(json);
+
+            return data;         
+        }
+        return new BestScoreData("null",-1);
+    }
+
     public void GameOver()
     {
         m_GameOver = true;
+
+        //load data, if the loaded score is less than m_score, replace it.
+        //Save data if loaded score is less than m_score.
+        if(LoadBestScore().score < m_Points)
+        {
+            SaveBestScore();
+        }
+
+        BestScoreText.text = $"Best Score: {LoadBestScore().playerName} : {LoadBestScore().score}";
+
         GameOverText.SetActive(true);
     }
 }
